@@ -13,7 +13,7 @@ target:	nfcd
 %.o: %.cxx
 	@$(CXX) $(CFLAGS) -c $< -o $@
 
-nfcd: nfcd.o
+nfcd: nfcd.o nfc-utils.o debug.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:

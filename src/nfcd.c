@@ -34,31 +34,19 @@
 #include <errno.h>
 #include <signal.h>
 
+#include "nfc-utils.h"
+#include "debug.h"
 #include "types.h"
 
-/**
- * @macro DBG
- * @brief Print a message of standard output only in DEBUG mode
- */
-#ifdef DEBUG
-#  define DBG(...) do { \
-    printf ("DBG %s:%d", __FILE__, __LINE__); \
-    printf ("    " __VA_ARGS__ ); \
-} while (0)
-#else
-#  define DBG(...) {}
-#endif
 
 #define DEF_POLLING 1    /* 1 second timeout */
 #define DEF_EXPIRE 0    /* no expire */
 
-#define DEF_CONFIG_FILE SYSCONFDIR"/nfc-eventd.conf"
 
-int polling_time;
-int expire_time;
+int polling_time = DEF_POLLING;
+int expire_time = DEF_EXPIRE;
 int daemonize = 0;
-int debug;
-char *cfgfile;
+int debug = 0;
 
 nfc_device* device = NULL;
 nfc_context* context;
@@ -84,7 +72,8 @@ static void stop_polling(int sig)
  * @brief Execute NEM function that handle events
  */
 static int execute_event ( const nfc_device *dev, const nfc_target* tag, const nem_event_t event ) {
-    return printf("%s\n", __FUNCTION__);
+    INFO ( "%s\n", __FUNCTION__ );
+    return 0;
 }
 
 
@@ -137,7 +126,7 @@ main ( int argc, char *argv[] ) {
     if ( daemonize ) {
         DBG ( "%s", "Going to be daemon..." );
         if ( daemon ( 0, debug ) < 0 ) {
-            printf ( "Error in daemon() call: %s", strerror ( errno ) );
+            ERR ( "Error in daemon() call: %s", strerror ( errno ) );
             return 1;
         }
     }
@@ -156,13 +145,13 @@ main ( int argc, char *argv[] ) {
 
     nfc_init(&context);
     if (context == NULL) {
-      printf("Unable to init libnfc (malloc)");
+      ERR( "Unable to init libnfc (malloc)" );
       exit(EXIT_FAILURE);
     }
     // Try to open the NFC device
     if ( device == NULL ) device = nfc_open( context, NULL );
     if ( device == NULL ) {
-        printf( "%s", "NFC device not found" );
+        ERR( "%s", "NFC device not found" );
         exit(EXIT_FAILURE);
     }
     nfc_initiator_init ( device );
@@ -178,7 +167,7 @@ main ( int argc, char *argv[] ) {
     // Enable field so more power consuming cards can power themselves up
     nfc_device_set_property_bool ( device, NP_ACTIVATE_FIELD, true );
 
-    printf( "Connected to NFC device: %s", nfc_device_get_name(device) );
+    INFO( "Connected to NFC device: %s", nfc_device_get_name(device) );
 
     do {
 detect:
@@ -191,7 +180,7 @@ detect:
             expire_count += polling_time;
             if ( expire_count >= expire_time ) {
                 DBG ( "%s", "Timeout on tag removed " );
-                execute_event ( device, new_tag,EVENT_EXPIRE_TIME );
+                execute_event ( device, new_tag, EVENT_EXPIRE_TIME );
                 expire_count = 0; /*restart timer */
             }
         } else { /* state changed; parse event */
