@@ -35,6 +35,7 @@
 #include <signal.h>
 
 #include "nfc-utils.h"
+#include "mifare.h"
 #include "debug.h"
 #include "types.h"
 
@@ -72,8 +73,42 @@ static void stop_polling(int sig)
  * @brief Execute NEM function that handle events
  */
 static int execute_event ( const nfc_device *dev, const nfc_target* tag, const nem_event_t event ) {
-    INFO ( "%s\n", __FUNCTION__ );
-    return 0;
+  INFO ( "%s\n", __FUNCTION__ );
+  switch (event) {
+    case EVENT_TAG_INSERTED:
+      switch (tag->nm.nmt) {
+        case NMT_ISO14443A:
+          // Test if we are dealing with a MIFARE classic tag
+          if (tag->nti.nai.btSak & 0x08) {
+            mifare_classic_tag card;
+            printf("Found MIFARE Classic card:\n");
+            print_nfc_target(tag, true);
+            mifare_classic_read_card(dev, tag, 1, NULL, &card);
+          }
+          // Test if we are dealing with a MIFARE ultralight tag
+          if (tag->nti.nai.abtAtqa[1] == 0x44) {
+              mifareul_tag card;
+              printf("Found MIFARE UL card:\n");
+              print_nfc_target(tag, true);
+              mifare_ultralight_read_card(dev, tag, NULL, &card);
+          }
+          break;
+        case NMT_JEWEL:
+        case NMT_ISO14443B:
+        case NMT_ISO14443BI:
+        case NMT_ISO14443B2SR:
+        case NMT_ISO14443B2CT:
+        case NMT_FELICA:
+        default:
+          break;
+      }
+      break;
+    case EVENT_TAG_REMOVED:
+    case EVENT_EXPIRE_TIME:
+    default:
+      break;
+  }
+  return 0;
 }
 
 

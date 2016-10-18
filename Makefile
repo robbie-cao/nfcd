@@ -14,7 +14,7 @@ define Package/nfcd
 	DEPENDS:=+ubusd +ubus +ubox +libubus +libubox +libblobmsg-json +libnfc
 endef
 
-TARGET_CFLAGS += -Wall -DDEBUG
+TARGET_CFLAGS += -std=c99 -Wall -DDEBUG
 EXTRA_LDFLAGS += -lubus -lubox -lblobmsg_json -lnfc
 
 define Build/Prepare
